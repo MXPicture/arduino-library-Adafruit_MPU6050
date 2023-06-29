@@ -239,7 +239,7 @@ public:
         return false;
     }
 
-    return _init(sensor_id);
+    return _init(sensorID);
   };
 
   // Adafruit_Sensor API/Interface
