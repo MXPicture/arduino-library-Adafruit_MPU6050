@@ -20,6 +20,7 @@
 #include "Arduino.h"
 #include <Adafruit_BusIO_Register.h>
 #include <Adafruit_I2CDevice.h>
+#include <Adafruit_I2CDeviceSoft.h>
 #include <Adafruit_Sensor.h>
 #include <Wire.h>
 
@@ -210,6 +211,36 @@ public:
 
   bool begin(uint8_t i2c_addr = MPU6050_I2CADDR_DEFAULT, TwoWire *wire = &Wire,
              int32_t sensorID = 0);
+
+  virtual bool begin(SoftI2C* wire, uint8_t i2c_addr = MPU6050_I2CADDR_DEFAULT, int32_t sensorID = 0) {
+    if (this->i2c_dev) {
+      delete this->i2c_dev; // remove old interface
+    }
+
+    this->i2c_dev = new Adafruit_I2CDeviceSoft(i2c_addr, wire);
+
+    // For boards with I2C bus power control, may need to delay to allow
+    // MPU6050 to come up after initial power.
+    bool mpu_found = false;
+    for (uint8_t tries = 0; tries < 5; tries++) {
+        mpu_found = i2c_dev->begin();
+        if (mpu_found)
+        break;
+        delay(10);
+    }
+    if (!mpu_found)
+        return false;
+
+    Adafruit_BusIO_Register chip_id =
+        Adafruit_BusIO_Register(i2c_dev, MPU6050_WHO_AM_I, 1);
+
+    // make sure we're talking to the right chip
+    if (chip_id.read() != MPU6050_DEVICE_ID) {
+        return false;
+    }
+
+    return _init(sensor_id);
+  };
 
   // Adafruit_Sensor API/Interface
   bool getEvent(sensors_event_t *accel, sensors_event_t *gyro,
